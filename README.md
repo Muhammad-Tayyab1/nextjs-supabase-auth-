@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Next.js + Supabase Auth
 
-## Getting Started
+A clean, production-style authentication flow built with the Next.js App
+Router and Supabase Auth — sign up with email confirmation, log in, log out,
+and a protected dashboard route, with session refresh handled in middleware.
 
-First, run the development server:
+## Features
+
+- Email/password sign up with email confirmation
+- Email/password log in
+- Log out
+- Protected `/dashboard` route (redirects to `/login` when signed out)
+- Signed-in users are redirected away from `/login` and `/signup`
+- Session refresh handled centrally in middleware (`src/middleware.ts`)
+- Server Actions for all auth mutations — no client-side API routes needed
+- Tailwind CSS UI, dark mode aware
+
+## Tech stack
+
+- [Next.js](https://nextjs.org/) (App Router, TypeScript)
+- [Supabase](https://supabase.com/) (Auth)
+- [@supabase/ssr](https://supabase.com/docs/guides/auth/server-side/nextjs) for cookie-based server/browser clients
+- [Tailwind CSS](https://tailwindcss.com/)
+
+## Getting started
+
+### 1. Create a Supabase project
+
+Create a free project at [supabase.com](https://supabase.com/dashboard), then
+grab the **Project URL** and **anon public key** from
+`Project Settings → API`.
+
+### 2. Configure environment variables
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Fill in the values:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Configure the redirect URL in Supabase
 
-## Learn More
+In your Supabase project, go to `Authentication → URL Configuration` and add
+your app's callback URL to **Redirect URLs**:
 
-To learn more about Next.js, take a look at the following resources:
+```
+http://localhost:3000/auth/callback
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+(Add your production URL too once you deploy, e.g.
+`https://your-app.vercel.app/auth/callback`.)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Install dependencies and run
 
-## Deploy on Vercel
+```bash
+npm install
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Visit [http://localhost:3000](http://localhost:3000).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## How it works
+
+- `src/lib/supabase/client.ts` — browser Supabase client
+- `src/lib/supabase/server.ts` — server Supabase client (reads/writes auth cookies)
+- `src/lib/supabase/middleware.ts` — refreshes the session on every request and
+  redirects based on auth state
+- `src/middleware.ts` — wires the middleware helper into Next.js
+- `src/app/auth/actions.ts` — `login`, `signup`, and `logout` Server Actions
+- `src/app/auth/callback/route.ts` — exchanges the email confirmation code for
+  a session
+- `src/app/dashboard/page.tsx` — example protected page
+
+## Deploying
+
+Deploy to [Vercel](https://vercel.com/) (or any Next.js host) and set the same
+two environment variables in your project settings. Don't forget to add the
+production callback URL to Supabase's redirect URL allow-list.
+
+## License
+
+MIT

@@ -1,5 +1,7 @@
 import Link from "next/link";
+
 import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -8,42 +10,32 @@ export default async function Home() {
   } = await supabase.auth.getUser();
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center bg-gray-50 px-4 dark:bg-gray-950">
+    <main className="flex flex-1 flex-col items-center justify-center px-4">
       <div className="w-full max-w-lg text-center">
-        <p className="mb-3 text-sm font-medium uppercase tracking-wide text-emerald-600">
+        <p className="text-primary mb-3 text-sm font-medium tracking-wide uppercase">
           Next.js &middot; Supabase
         </p>
-        <h1 className="mb-4 text-4xl font-bold text-gray-900 dark:text-white">
-          Auth flow starter
-        </h1>
-        <p className="mb-8 text-gray-500 dark:text-gray-400">
-          Sign up, email confirmation, session-aware middleware, and a
-          protected dashboard — built with the Next.js App Router and
-          Supabase Auth.
+        <h1 className="mb-4 text-4xl font-bold">Auth &amp; platform starter</h1>
+        <p className="text-muted-foreground mb-8">
+          Password, magic link, phone OTP, and 2FA sign-in, a profile backed
+          by Postgres row-level security, avatar uploads via Storage, and a
+          live presence widget over Realtime — built with the Next.js App
+          Router, Supabase, and shadcn/ui.
         </p>
 
         <div className="flex items-center justify-center gap-3">
           {user ? (
-            <Link
-              href="/dashboard"
-              className="rounded-md bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700"
-            >
-              Go to dashboard
-            </Link>
+            <Button asChild>
+              <Link href="/dashboard">Go to dashboard</Link>
+            </Button>
           ) : (
             <>
-              <Link
-                href="/login"
-                className="rounded-md border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-md bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700"
-              >
-                Sign up
-              </Link>
+              <Button asChild variant="outline">
+                <Link href="/login">Log in</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/signup">Sign up</Link>
+              </Button>
             </>
           )}
         </div>

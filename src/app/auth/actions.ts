@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
+export type OAuthProvider = "google" | "github";
+
 async function getOrigin() {
   return (await headers()).get("origin");
 }
@@ -85,6 +87,26 @@ export async function loginWithMagicLink(formData: FormData) {
   redirect(
     `/login?message=${encodeURIComponent("Check your email for a magic link")}`,
   );
+}
+
+export async function signInWithOAuth(formData: FormData) {
+  const supabase = await createClient();
+  const origin = await getOrigin();
+
+  const provider = formData.get("provider") as OAuthProvider;
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: `${origin}/auth/callback`,
+    },
+  });
+
+  if (error) {
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(data.url);
 }
 
 export async function signInAsGuest() {
@@ -251,4 +273,63 @@ export async function uploadAvatar(formData: FormData) {
 
   revalidatePath("/dashboard");
   redirect(`/dashboard?message=${encodeURIComponent("Avatar updated")}`);
+}
+
+export async function linkEmailPassword(formData: FormData) {
+  const supabase = await createClient();
+  const origin = await getOrigin();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+
+  const { error } = await supabase.auth.updateUser(
+    { email, password },
+    { emailRedirectTo: `${origin}/auth/callback?next=/dashboard` },
+  );
+
+  if (error) {
+    redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(
+    `/dashboard?message=${encodeURIComponent(
+      "Check your email to confirm and finish creating your account",
+    )}`,
+  );
+}
+
+export async function linkOAuthIdentity(formData: FormData) {
+  const supabase = await createClient();
+  const origin = await getOrigin();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const provider = formData.get("provider") as OAuthProvider;
+
+  const { data, error } = await supabase.auth.linkIdentity({
+    provider,
+    options: {
+      redirectTo: `${origin}/auth/callback?next=/dashboard`,
+    },
+  });
+
+  if (error) {
+    redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(data.url);
 }

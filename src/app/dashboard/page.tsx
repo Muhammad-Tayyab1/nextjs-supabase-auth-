@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { AccountLinking } from "@/components/account-linking";
 import { AccountSettings } from "@/components/account-settings";
 import { AuthMessage } from "@/components/auth-message";
 import { AvatarUploader } from "@/components/avatar-uploader";
@@ -8,6 +9,7 @@ import { LogoutButton } from "@/components/logout-button";
 import { MfaManager } from "@/components/mfa-manager";
 import { PresenceWidget } from "@/components/presence-widget";
 import { ProfileForm } from "@/components/profile-form";
+import { RealtimeFeed, type FeedMessage } from "@/components/realtime-feed";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -44,6 +46,13 @@ export default async function DashboardPage({
     .select("display_name, bio, avatar_url")
     .eq("id", user.id)
     .maybeSingle<Profile>();
+
+  const { data: messages } = await supabase
+    .from("messages")
+    .select("id, author, content, created_at")
+    .order("created_at", { ascending: true })
+    .limit(50)
+    .returns<FeedMessage[]>();
 
   const identityLabel = user.email ?? user.phone ?? "Guest";
   const fallback = identityLabel.slice(0, 2).toUpperCase();
@@ -100,6 +109,18 @@ export default async function DashboardPage({
 
       <Card>
         <CardHeader>
+          <CardTitle>Live activity feed</CardTitle>
+          <CardDescription>
+            Streamed with Realtime Postgres Changes on the <code>messages</code> table
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RealtimeFeed initialMessages={messages ?? []} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Two-factor authentication</CardTitle>
           <CardDescription>Protect your account with an authenticator app</CardDescription>
         </CardHeader>
@@ -108,7 +129,17 @@ export default async function DashboardPage({
         </CardContent>
       </Card>
 
-      {!user.is_anonymous && (
+      {user.is_anonymous ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Create a permanent account</CardTitle>
+            <CardDescription>Don&apos;t lose access to your data</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AccountLinking />
+          </CardContent>
+        </Card>
+      ) : (
         <Card>
           <CardHeader>
             <CardTitle>Account settings</CardTitle>

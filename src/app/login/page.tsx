@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { login, loginWithMagicLink, signInAsGuest } from "@/app/auth/actions";
 import { AuthMessage } from "@/components/auth-message";
+import { OAuthButtons } from "@/components/oauth-buttons";
 import { PhoneOtpForm } from "@/components/phone-otp-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,11 +105,13 @@ export default async function LoginPage({
 
           <div className="my-6 flex items-center gap-3">
             <Separator className="flex-1" />
-            <span className="text-muted-foreground text-xs">or</span>
+            <span className="text-muted-foreground text-xs">or continue with</span>
             <Separator className="flex-1" />
           </div>
 
-          <form action={signInAsGuest}>
+          <OAuthButtons />
+
+          <form action={signInAsGuest} className="mt-2">
             <Button type="submit" variant="outline" className="w-full">
               Continue as guest
             </Button>

@@ -1,0 +1,24 @@
+{
+  "default_branch": "claude/repo-access-test-chea8q",
+  "branches": [
+    "claude/import-nextjs-supabase-auth",
+    "claude/oauth-linking-realtime",
+    "claude/repo-access-test-chea8q",
+    "claude/tasks-notes-ci",
+    "origin"
+  ],
+  "parent": {
+    "claude/import-nextjs-supabase-auth": "claude/repo-access-test-chea8q",
+    "claude/oauth-linking-realtime": "claude/repo-access-test-chea8q",
+    "claude/repo-access-test-chea8q": null,
+    "claude/tasks-notes-ci": "claude/repo-access-test-chea8q",
+    "origin": "claude/repo-access-test-chea8q"
+  },
+  "order": [
+    "claude/repo-access-test-chea8q",
+    "claude/import-nextjs-supabase-auth",
+    "claude/oauth-linking-realtime",
+    "claude/tasks-notes-ci",
+    "origin"
+  ]
+}

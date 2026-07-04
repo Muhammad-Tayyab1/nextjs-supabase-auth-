@@ -5,6 +5,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/dashboard";
+  const errorDescription = searchParams.get("error_description");
 
   if (code) {
     const supabase = await createClient();
@@ -12,9 +13,14 @@ export async function GET(request: Request) {
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`);
     }
+    return NextResponse.redirect(
+      `${origin}/error?message=${encodeURIComponent(error.message)}`,
+    );
   }
 
   return NextResponse.redirect(
-    `${origin}/error?message=${encodeURIComponent("Could not verify your email link.")}`,
+    `${origin}/error?message=${encodeURIComponent(
+      errorDescription ?? "Could not verify your email link.",
+    )}`,
   );
 }

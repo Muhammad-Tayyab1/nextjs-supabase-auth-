@@ -1,8 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/dashboard"];
-const AUTH_PREFIXES = ["/login", "/signup"];
+const PROTECTED_PREFIXES = ["/dashboard", "/reset-password"];
+const AUTH_PREFIXES = ["/login", "/signup", "/forgot-password"];
+const MFA_CHALLENGE_PATH = "/login/mfa";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -36,19 +37,35 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const isMfaChallenge = pathname === MFA_CHALLENGE_PATH;
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
-  const isAuthPage = AUTH_PREFIXES.some((p) => pathname.startsWith(p));
+  const isAuthPage =
+    !isMfaChallenge && AUTH_PREFIXES.some((p) => pathname.startsWith(p));
 
-  if (!user && isProtected) {
+  if (!user && (isProtected || isMfaChallenge)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthPage) {
+  let needsMfaChallenge = false;
+  if (user) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    needsMfaChallenge =
+      !!aal && aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel;
+  }
+
+  if (needsMfaChallenge && isProtected) {
+    const url = request.nextUrl.clone();
+    url.pathname = MFA_CHALLENGE_PATH;
+    return NextResponse.redirect(url);
+  }
+
+  if (user && !needsMfaChallenge && (isAuthPage || isMfaChallenge)) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

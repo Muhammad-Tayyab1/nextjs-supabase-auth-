@@ -101,6 +101,16 @@ create table if not exists public.messages (
 
 alter table public.messages enable row level security;
 
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'messages_content_length'
+  ) then
+    alter table public.messages
+      add constraint messages_content_length check (char_length(content) <= 280);
+  end if;
+end $$;
+
 drop policy if exists "Messages are viewable by authenticated users" on public.messages;
 create policy "Messages are viewable by authenticated users"
   on public.messages for select

@@ -1,4 +1,5 @@
 import { requestEmailChange, updatePassword } from "@/app/auth/actions";
+import { IdentityManager } from "@/components/identity-manager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +47,13 @@ export function AccountSettings({ email }: { email: string | null }) {
           </Button>
         </div>
       </form>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <Label>Linked sign-in methods</Label>
+        <IdentityManager />
+      </div>
     </div>
   );
 }

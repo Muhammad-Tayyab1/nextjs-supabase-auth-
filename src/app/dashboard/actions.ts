@@ -21,6 +21,12 @@ export async function postMessage(formData: FormData) {
     return;
   }
 
+  if (content.length > 280) {
+    redirect(
+      `/dashboard?error=${encodeURIComponent("Messages must be 280 characters or fewer")}`,
+    );
+  }
+
   const { error } = await supabase.from("messages").insert({
     user_id: user.id,
     author: user.email ?? user.phone ?? "Guest",

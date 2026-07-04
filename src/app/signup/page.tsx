@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { signup } from "@/app/auth/actions";
 import { AuthMessage } from "@/components/auth-message";
+import { OAuthButtons } from "@/components/oauth-buttons";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 
 export default async function SignupPage({
   searchParams,
@@ -60,6 +62,14 @@ export default async function SignupPage({
               Sign up
             </Button>
           </form>
+
+          <div className="my-6 flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-muted-foreground text-xs">or continue with</span>
+            <Separator className="flex-1" />
+          </div>
+
+          <OAuthButtons />
 
           <p className="text-muted-foreground mt-6 text-center text-sm">
             Already have an account?{" "}

@@ -1,9 +1,10 @@
 # Next.js + Supabase Auth
 
 A production-style starter covering the Supabase platform end to end —
-every Supabase Auth sign-in method, a Postgres table secured with row-level
-security, file uploads via Supabase Storage, and a live presence widget over
-Supabase Realtime — built with the Next.js App Router and shadcn/ui.
+every Supabase Auth sign-in method (including OAuth and anonymous account
+linking), a Postgres table secured with row-level security, file uploads via
+Supabase Storage, and Realtime Presence + Postgres Changes examples — built
+with the Next.js App Router and shadcn/ui.
 
 ## Features
 
@@ -13,10 +14,12 @@ Supabase Realtime — built with the Next.js App Router and shadcn/ui.
 - Email/password log in
 - Magic link (passwordless email OTP) sign-in
 - Phone number sign-in/up via SMS OTP
+- OAuth social sign-in (Google, GitHub)
 - Forgot password / reset password flow
 - Change email and change password from the dashboard
 - Two-factor authentication (TOTP) enrollment and login challenge
-- Anonymous ("continue as guest") sign-in
+- Anonymous ("continue as guest") sign-in, with account linking so a guest
+  can convert their session to a permanent email/password or OAuth account
 - Log out
 - Protected `/dashboard` and `/reset-password` routes (redirect to `/login`
   when signed out); signed-in users are redirected away from `/login`,
@@ -38,7 +41,8 @@ Supabase Realtime — built with the Next.js App Router and shadcn/ui.
 
 ### Realtime
 
-- A "who's online" presence widget on the dashboard using a Realtime channel
+- A "who's online" presence widget on the dashboard using a Realtime Presence channel
+- A live activity feed streamed with Realtime Postgres Changes on a `messages` table
 
 ### UI
 
@@ -78,8 +82,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 Open `Project → SQL Editor → New query` in the Supabase dashboard, paste in
 the contents of [`supabase/schema.sql`](./supabase/schema.sql), and run it.
-This creates the `profiles` table with RLS policies and the public `avatars`
-storage bucket with per-user upload/update/delete policies.
+This creates the `profiles` table with RLS policies, the public `avatars`
+storage bucket with per-user upload/update/delete policies, and the
+`messages` table (added to the `supabase_realtime` publication) used by the
+live activity feed.
 
 ### 4. Configure redirect URLs in Supabase
 
@@ -102,7 +108,15 @@ All of these are configured under `Authentication → Providers` /
   password reset).
 - **Phone** — enable the Phone provider and configure an SMS provider
   (Twilio, MessageBird, Vonage, or Textlocal) to use phone/SMS OTP sign-in.
+- **Google / GitHub OAuth** — under `Authentication → Sign In / Providers`,
+  enable Google and/or GitHub and paste in the Client ID/Secret from an OAuth
+  app you register with each provider. Use the **Callback URL** shown on that
+  provider's settings page (`https://<project-ref>.supabase.co/auth/v1/callback`)
+  as the redirect URI when registering the OAuth app — that's a Supabase URL,
+  not this app's `/auth/callback` route.
 - **Anonymous sign-ins** — toggle on under `Authentication → Sign In / Providers → Anonymous Sign-Ins`.
+  To let guests link an OAuth identity (as opposed to just email/password),
+  also enable **Manual linking** under `Authentication → Settings`.
 - **MFA (TOTP)** — enabled by default; no extra configuration needed.
 
 ### 6. Install dependencies and run
@@ -123,24 +137,32 @@ Visit [http://localhost:3000](http://localhost:3000).
   user still needs to complete a two-factor challenge
 - `src/proxy.ts` — wires the middleware helper into Next.js (Next.js 16
   renamed the `middleware.ts` convention to `proxy.ts`)
-- `src/app/auth/actions.ts` — Server Actions for password/magic-link/reset/
-  email-change/profile/avatar mutations
+- `src/app/auth/actions.ts` — Server Actions for password/magic-link/OAuth/
+  reset/email-change/profile/avatar/account-linking mutations
 - `src/app/auth/callback/route.ts` — exchanges the PKCE `code` param for a
-  session (used by signup confirmation, magic link, password reset, and
-  email change)
+  session (used by signup confirmation, magic link, OAuth, password reset,
+  email change, and account linking)
 - `src/components/phone-otp-form.tsx` — client component driving the two-step
   phone OTP flow directly against the browser Supabase client
+- `src/components/oauth-buttons.tsx` — Google/GitHub sign-in buttons calling
+  `signInWithOAuth`
+- `src/components/account-linking.tsx` — lets an anonymous ("guest") user
+  convert to a permanent account via `updateUser` (email/password) or
+  `linkIdentity` (OAuth)
 - `src/components/mfa-manager.tsx` — TOTP enroll/verify/unenroll UI on the
   dashboard
 - `src/app/login/mfa/page.tsx` — the AAL2 challenge page shown mid-login when
   a user has TOTP enabled
 - `src/components/presence-widget.tsx` — Realtime Presence channel showing
   who else is viewing the dashboard
+- `src/components/realtime-feed.tsx`, `src/app/dashboard/actions.ts#postMessage` —
+  Realtime Postgres Changes example: a shared feed backed by the `messages`
+  table, streamed live to every connected client
 - `src/components/avatar-uploader.tsx`, `src/app/auth/actions.ts#uploadAvatar` — Storage upload example
 - `src/components/profile-form.tsx`, `#updateProfile` — Database read/write example
 - `src/app/dashboard/page.tsx` — protected page composing all of the above
-- `supabase/schema.sql` — the `profiles` table, its RLS policies, and the
-  `avatars` storage bucket + policies
+- `supabase/schema.sql` — the `profiles` table, the `avatars` storage bucket,
+  and the `messages` table, with their RLS policies and realtime publication
 
 ## Deploying
 

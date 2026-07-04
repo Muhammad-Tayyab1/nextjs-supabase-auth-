@@ -1,6 +1,7 @@
 -- Run this in the Supabase SQL editor (Project -> SQL Editor -> New query).
--- Sets up the `profiles` table (Database example) and the `avatars` bucket
--- (Storage example) used by this app, both scoped with row-level security.
+-- Sets up the `profiles` table (Database example), the `avatars` bucket
+-- (Storage example), and the `messages` table (Realtime Postgres Changes
+-- example) used by this app, all scoped with row-level security.
 
 -- ---------------------------------------------------------------------------
 -- Database: profiles table
@@ -85,3 +86,48 @@ create policy "Users can delete their own avatar"
     bucket_id = 'avatars'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- ---------------------------------------------------------------------------
+-- Realtime: messages table (Postgres Changes example)
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  author text not null,
+  content text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.messages enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'messages_content_length'
+  ) then
+    alter table public.messages
+      add constraint messages_content_length check (char_length(content) <= 280);
+  end if;
+end $$;
+
+drop policy if exists "Messages are viewable by authenticated users" on public.messages;
+create policy "Messages are viewable by authenticated users"
+  on public.messages for select
+  using (auth.role() = 'authenticated');
+
+drop policy if exists "Users can insert their own messages" on public.messages;
+create policy "Users can insert their own messages"
+  on public.messages for insert
+  with check (auth.uid() = user_id);
+
+-- Stream inserts on this table to subscribed clients.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $$;

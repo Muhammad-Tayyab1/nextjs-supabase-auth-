@@ -1,10 +1,12 @@
 # Next.js + Supabase Auth
 
 A production-style starter covering the Supabase platform end to end —
-every Supabase Auth sign-in method (including OAuth and anonymous account
-linking), a Postgres table secured with row-level security, file uploads via
-Supabase Storage, and Realtime Presence + Postgres Changes examples — built
-with the Next.js App Router and shadcn/ui.
+every Supabase Auth sign-in method (including OAuth, anonymous account
+linking, and account deletion), Postgres tables secured with row-level
+security (profiles, a to-do list, notes), file uploads via Supabase Storage,
+and Realtime Presence + Postgres Changes examples — built with the Next.js
+App Router and shadcn/ui, with unit tests, e2e tests, and CI wired up out of
+the box.
 
 ## Features
 
@@ -20,6 +22,7 @@ with the Next.js App Router and shadcn/ui.
 - Two-factor authentication (TOTP) enrollment and login challenge
 - Anonymous ("continue as guest") sign-in, with account linking so a guest
   can convert their session to a permanent email/password or OAuth account
+- Account deletion (permanently deletes the user and all owned data)
 - Log out
 - Protected `/dashboard` and `/reset-password` routes (redirect to `/login`
   when signed out); signed-in users are redirected away from `/login`,
@@ -33,6 +36,10 @@ with the Next.js App Router and shadcn/ui.
 - A `profiles` table (`display_name`, `bio`, `avatar_url`) with row-level
   security policies scoping every row to its owner, auto-created via a
   trigger on `auth.users` — see `supabase/schema.sql`
+- A `tasks` table backing a to-do list (create, complete, delete), scoped to
+  its owner with row-level security
+- A `notes` table backing a free-form notes list (create, edit, delete),
+  scoped to its owner with row-level security
 
 ### Storage
 
@@ -48,6 +55,18 @@ with the Next.js App Router and shadcn/ui.
 
 - Built with [shadcn/ui](https://ui.shadcn.com/) components (Tailwind CSS v4,
   Radix primitives), dark mode aware
+
+### Developer experience
+
+- GitHub Actions CI (`.github/workflows/ci.yml`) running lint, typecheck,
+  unit tests, build, and an end-to-end smoke suite on every pull request
+- Unit/component tests with [Vitest](https://vitest.dev/) + React Testing
+  Library (`npm test`) — pure logic (route gating, `cn()`) and presentational
+  components, no live Supabase project required
+- End-to-end smoke tests with [Playwright](https://playwright.dev/)
+  (`npm run test:e2e`) covering the public pages and route-protection
+  redirects against a running dev server
+- `npm run typecheck` for a standalone TypeScript check
 
 ## Tech stack
 
@@ -71,21 +90,28 @@ grab the **Project URL** and **anon public key** from
 cp .env.example .env.local
 ```
 
-Fill in the values:
+Fill in the values from `Project Settings → API`:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
+
+`SUPABASE_SERVICE_ROLE_KEY` is the **service_role secret** — never prefix it
+with `NEXT_PUBLIC_` or send it to the browser. It's only read inside the
+account-deletion Server Action (`src/lib/supabase/admin.ts`), since deleting
+an auth user requires Supabase's Admin API, which a user's own session can't
+call.
 
 ### 3. Run the database + storage setup
 
 Open `Project → SQL Editor → New query` in the Supabase dashboard, paste in
 the contents of [`supabase/schema.sql`](./supabase/schema.sql), and run it.
-This creates the `profiles` table with RLS policies, the public `avatars`
-storage bucket with per-user upload/update/delete policies, and the
-`messages` table (added to the `supabase_realtime` publication) used by the
-live activity feed.
+This creates the `profiles`, `tasks`, and `notes` tables with RLS policies,
+the public `avatars` storage bucket with per-user upload/update/delete
+policies, and the `messages` table (added to the `supabase_realtime`
+publication) used by the live activity feed.
 
 ### 4. Configure redirect URLs in Supabase
 
@@ -132,9 +158,13 @@ Visit [http://localhost:3000](http://localhost:3000).
 
 - `src/lib/supabase/client.ts` — browser Supabase client
 - `src/lib/supabase/server.ts` — server Supabase client (reads/writes auth cookies)
-- `src/lib/supabase/middleware.ts` — refreshes the session on every request,
-  redirects based on auth state, and routes to `/login/mfa` when a signed-in
-  user still needs to complete a two-factor challenge
+- `src/lib/supabase/middleware.ts` — refreshes the session on every request
+  and applies the routing decision from `route-guard.ts`
+- `src/lib/supabase/route-guard.ts` — the pure, unit-tested routing decision
+  (protected pages, auth pages, the `/login/mfa` challenge) with no
+  Supabase/cookie dependencies
+- `src/lib/supabase/admin.ts` — service-role client used only by Server
+  Actions that need Supabase's Admin API (account deletion)
 - `src/proxy.ts` — wires the middleware helper into Next.js (Next.js 16
   renamed the `middleware.ts` convention to `proxy.ts`)
 - `src/app/auth/actions.ts` — Server Actions for password/magic-link/OAuth/
@@ -160,14 +190,26 @@ Visit [http://localhost:3000](http://localhost:3000).
   table, streamed live to every connected client
 - `src/components/avatar-uploader.tsx`, `src/app/auth/actions.ts#uploadAvatar` — Storage upload example
 - `src/components/profile-form.tsx`, `#updateProfile` — Database read/write example
+- `src/components/task-list.tsx`, `src/app/dashboard/actions.ts#createTask/toggleTask/deleteTask` — a to-do list backed by the `tasks` table
+- `src/components/notes-list.tsx`, `#createNote/updateNote/deleteNote` — a notes list backed by the `notes` table
+- `src/app/dashboard/loading.tsx` — Skeleton loading state shown while the dashboard's Server Component data is fetched
+- `src/components/delete-account-dialog.tsx`, `src/app/dashboard/actions.ts#deleteAccount` —
+  account deletion: cleans up the user's avatar files, then calls the Admin
+  API to delete the auth user (row data cascades via foreign keys)
 - `src/app/dashboard/page.tsx` — protected page composing all of the above
-- `supabase/schema.sql` — the `profiles` table, the `avatars` storage bucket,
-  and the `messages` table, with their RLS policies and realtime publication
+- `supabase/schema.sql` — the `profiles`, `tasks`, `notes`, and `messages`
+  tables and the `avatars` storage bucket, with their RLS policies and
+  realtime publication
+- `.github/workflows/ci.yml` — lint, typecheck, unit tests, build, and e2e
+  smoke tests on every pull request
+- `vitest.config.mts`, `**/__tests__/*` — unit/component test setup and specs
+- `playwright.config.ts`, `e2e/smoke.spec.ts` — end-to-end smoke test setup and specs
 
 ## Deploying
 
 Deploy to [Vercel](https://vercel.com/) (or any Next.js host) and set the
-same two environment variables in your project settings. Don't forget to add
+same environment variables (including `SUPABASE_SERVICE_ROLE_KEY`, as a
+server-only/secret variable) in your project settings. Don't forget to add
 the production callback URL to Supabase's redirect URL allow-list.
 
 ## License

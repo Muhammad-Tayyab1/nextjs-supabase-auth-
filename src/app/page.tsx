@@ -1,9 +1,15 @@
 import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
+import { AuthMessage } from "@/components/auth-message";
 import { Button } from "@/components/ui/button";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; message?: string }>;
+}) {
+  const { error, message } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,6 +28,12 @@ export default async function Home() {
           live presence widget over Realtime — built with the Next.js App
           Router, Supabase, and shadcn/ui.
         </p>
+
+        {(error || message) && (
+          <div className="mb-6 text-left">
+            <AuthMessage error={error} message={message} />
+          </div>
+        )}
 
         <div className="flex items-center justify-center gap-3">
           {user ? (

@@ -1,9 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-
-const PROTECTED_PREFIXES = ["/dashboard", "/reset-password"];
-const AUTH_PREFIXES = ["/login", "/signup", "/forgot-password"];
-const MFA_CHALLENGE_PATH = "/login/mfa";
+import { resolveRouteDecision } from "./route-guard";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -36,19 +33,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-  const isMfaChallenge = pathname === MFA_CHALLENGE_PATH;
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
-  const isAuthPage =
-    !isMfaChallenge && AUTH_PREFIXES.some((p) => pathname.startsWith(p));
-
-  if (!user && (isProtected || isMfaChallenge)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
-  }
-
   let needsMfaChallenge = false;
   if (user) {
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -56,16 +40,20 @@ export async function updateSession(request: NextRequest) {
       !!aal && aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel;
   }
 
-  if (needsMfaChallenge && isProtected) {
-    const url = request.nextUrl.clone();
-    url.pathname = MFA_CHALLENGE_PATH;
-    return NextResponse.redirect(url);
-  }
+  const { pathname } = request.nextUrl;
+  const decision = resolveRouteDecision({
+    pathname,
+    isAuthenticated: !!user,
+    needsMfaChallenge,
+  });
 
-  if (user && !needsMfaChallenge && (isAuthPage || isMfaChallenge)) {
+  if (decision.type === "redirect") {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = decision.to;
     url.search = "";
+    if (decision.withNext) {
+      url.searchParams.set("next", pathname);
+    }
     return NextResponse.redirect(url);
   }
 

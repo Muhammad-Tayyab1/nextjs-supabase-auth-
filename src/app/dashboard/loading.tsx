@@ -27,10 +27,13 @@ export default function DashboardLoading() {
 
       <SkeletonCard lines={1} />
       <SkeletonCard lines={3} />
-      <SkeletonCard lines={1} />
+      <SkeletonCard lines={3} />
       <SkeletonCard lines={2} />
       <SkeletonCard lines={1} />
       <SkeletonCard lines={2} />
+      <SkeletonCard lines={1} />
+      <SkeletonCard lines={2} />
+      <SkeletonCard lines={1} />
 
       <Skeleton className="h-9 w-full" />
     </main>

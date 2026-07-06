@@ -2,9 +2,10 @@
 
 A production-style starter covering the Supabase platform end to end —
 every Supabase Auth sign-in method (including OAuth and anonymous account
-linking), a Postgres table secured with row-level security, file uploads via
-Supabase Storage, and Realtime Presence + Postgres Changes examples — built
-with the Next.js App Router and shadcn/ui.
+linking), Postgres tables secured with row-level security (profiles, a
+to-do list, notes), file uploads via Supabase Storage, and Realtime
+Presence + Postgres Changes examples — built with the Next.js App Router
+and shadcn/ui, with CI wired up out of the box.
 
 ## Features
 
@@ -33,6 +34,10 @@ with the Next.js App Router and shadcn/ui.
 - A `profiles` table (`display_name`, `bio`, `avatar_url`) with row-level
   security policies scoping every row to its owner, auto-created via a
   trigger on `auth.users` — see `supabase/schema.sql`
+- A `tasks` table backing a to-do list (create, complete, delete), scoped to
+  its owner with row-level security
+- A `notes` table backing a free-form notes list (create, edit, delete),
+  scoped to its owner with row-level security
 
 ### Storage
 
@@ -48,6 +53,12 @@ with the Next.js App Router and shadcn/ui.
 
 - Built with [shadcn/ui](https://ui.shadcn.com/) components (Tailwind CSS v4,
   Radix primitives), dark mode aware
+
+### Developer experience
+
+- GitHub Actions CI (`.github/workflows/ci.yml`) running lint, typecheck, and
+  build on every pull request
+- `npm run typecheck` for a standalone TypeScript check
 
 ## Tech stack
 
@@ -82,10 +93,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 Open `Project → SQL Editor → New query` in the Supabase dashboard, paste in
 the contents of [`supabase/schema.sql`](./supabase/schema.sql), and run it.
-This creates the `profiles` table with RLS policies, the public `avatars`
-storage bucket with per-user upload/update/delete policies, and the
-`messages` table (added to the `supabase_realtime` publication) used by the
-live activity feed.
+This creates the `profiles`, `tasks`, and `notes` tables with RLS policies,
+the public `avatars` storage bucket with per-user upload/update/delete
+policies, and the `messages` table (added to the `supabase_realtime`
+publication) used by the live activity feed.
 
 ### 4. Configure redirect URLs in Supabase
 
@@ -160,9 +171,14 @@ Visit [http://localhost:3000](http://localhost:3000).
   table, streamed live to every connected client
 - `src/components/avatar-uploader.tsx`, `src/app/auth/actions.ts#uploadAvatar` — Storage upload example
 - `src/components/profile-form.tsx`, `#updateProfile` — Database read/write example
+- `src/components/task-list.tsx`, `src/app/dashboard/actions.ts#createTask/toggleTask/deleteTask` — a to-do list backed by the `tasks` table
+- `src/components/notes-list.tsx`, `#createNote/updateNote/deleteNote` — a notes list backed by the `notes` table
+- `src/app/dashboard/loading.tsx` — Skeleton loading state shown while the dashboard's Server Component data is fetched
 - `src/app/dashboard/page.tsx` — protected page composing all of the above
-- `supabase/schema.sql` — the `profiles` table, the `avatars` storage bucket,
-  and the `messages` table, with their RLS policies and realtime publication
+- `supabase/schema.sql` — the `profiles`, `tasks`, `notes`, and `messages`
+  tables and the `avatars` storage bucket, with their RLS policies and
+  realtime publication
+- `.github/workflows/ci.yml` — lint, typecheck, and build on every pull request
 
 ## Deploying
 

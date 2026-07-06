@@ -5,15 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export async function postMessage(formData: FormData) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user } = await requireUser();
 
   const content = (formData.get("content") as string)?.trim();
 
@@ -32,6 +24,121 @@ export async function postMessage(formData: FormData) {
     author: user.email ?? user.phone ?? "Guest",
     content,
   });
+
+  if (error) {
+    redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard");
+}
+
+async function requireUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  return { supabase, user };
+}
+
+export async function createTask(formData: FormData) {
+  const { supabase, user } = await requireUser();
+
+  const title = (formData.get("title") as string)?.trim();
+
+  if (!title) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from("tasks")
+    .insert({ user_id: user.id, title });
+
+  if (error) {
+    redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard");
+}
+
+export async function toggleTask(formData: FormData) {
+  const { supabase } = await requireUser();
+
+  const id = formData.get("id") as string;
+  const isComplete = formData.get("isComplete") === "true";
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ is_complete: !isComplete })
+    .eq("id", id);
+
+  if (error) {
+    redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard");
+}
+
+export async function deleteTask(formData: FormData) {
+  const { supabase } = await requireUser();
+
+  const id = formData.get("id") as string;
+
+  const { error } = await supabase.from("tasks").delete().eq("id", id);
+
+  if (error) {
+    redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard");
+}
+
+export async function createNote(formData: FormData) {
+  const { supabase, user } = await requireUser();
+
+  const title = (formData.get("title") as string)?.trim() || "Untitled";
+  const body = (formData.get("body") as string) ?? "";
+
+  const { error } = await supabase
+    .from("notes")
+    .insert({ user_id: user.id, title, body });
+
+  if (error) {
+    redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard");
+}
+
+export async function updateNote(formData: FormData) {
+  const { supabase } = await requireUser();
+
+  const id = formData.get("id") as string;
+  const title = (formData.get("title") as string)?.trim() || "Untitled";
+  const body = (formData.get("body") as string) ?? "";
+
+  const { error } = await supabase
+    .from("notes")
+    .update({ title, body, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard");
+}
+
+export async function deleteNote(formData: FormData) {
+  const { supabase } = await requireUser();
+
+  const id = formData.get("id") as string;
+
+  const { error } = await supabase.from("notes").delete().eq("id", id);
 
   if (error) {
     redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);

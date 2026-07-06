@@ -7,9 +7,11 @@ import { AuthMessage } from "@/components/auth-message";
 import { AvatarUploader } from "@/components/avatar-uploader";
 import { LogoutButton } from "@/components/logout-button";
 import { MfaManager } from "@/components/mfa-manager";
+import { NotesList, type Note } from "@/components/notes-list";
 import { PresenceWidget } from "@/components/presence-widget";
 import { ProfileForm } from "@/components/profile-form";
 import { RealtimeFeed, type FeedMessage } from "@/components/realtime-feed";
+import { TaskList, type Task } from "@/components/task-list";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -54,6 +56,18 @@ export default async function DashboardPage({
     .limit(50)
     .returns<FeedMessage[]>();
 
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("id, title, is_complete")
+    .order("created_at", { ascending: true })
+    .returns<Task[]>();
+
+  const { data: notes } = await supabase
+    .from("notes")
+    .select("id, title, body")
+    .order("updated_at", { ascending: false })
+    .returns<Note[]>();
+
   const identityLabel = user.email ?? user.phone ?? "Guest";
   const fallback = identityLabel.slice(0, 2).toUpperCase();
 
@@ -94,6 +108,30 @@ export default async function DashboardPage({
             displayName={profile?.display_name ?? null}
             bio={profile?.bio ?? null}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tasks</CardTitle>
+          <CardDescription>
+            A to-do list backed by the <code>tasks</code> table
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TaskList tasks={tasks ?? []} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Notes</CardTitle>
+          <CardDescription>
+            Free-form notes backed by the <code>notes</code> table
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <NotesList notes={notes ?? []} />
         </CardContent>
       </Card>
 

@@ -5,6 +5,7 @@ import { AccountLinking } from "@/components/account-linking";
 import { AccountSettings } from "@/components/account-settings";
 import { AuthMessage } from "@/components/auth-message";
 import { AvatarUploader } from "@/components/avatar-uploader";
+import { DeleteAccountDialog } from "@/components/delete-account-dialog";
 import { LogoutButton } from "@/components/logout-button";
 import { MfaManager } from "@/components/mfa-manager";
 import { NotesList, type Note } from "@/components/notes-list";
@@ -188,6 +189,16 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Danger zone</CardTitle>
+          <CardDescription>Permanently delete your account and all of its data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DeleteAccountDialog />
+        </CardContent>
+      </Card>
 
       <LogoutButton />
     </main>

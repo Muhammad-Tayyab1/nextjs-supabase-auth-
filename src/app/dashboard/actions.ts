@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export async function postMessage(formData: FormData) {
@@ -145,4 +146,28 @@ export async function deleteNote(formData: FormData) {
   }
 
   revalidatePath("/dashboard");
+}
+
+export async function deleteAccount() {
+  const { supabase, user } = await requireUser();
+
+  const { data: avatarFiles } = await supabase.storage
+    .from("avatars")
+    .list(user.id);
+
+  if (avatarFiles && avatarFiles.length > 0) {
+    await supabase.storage
+      .from("avatars")
+      .remove(avatarFiles.map((file) => `${user.id}/${file.name}`));
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(user.id);
+
+  if (error) {
+    redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase.auth.signOut();
+  redirect(`/?message=${encodeURIComponent("Your account has been deleted")}`);
 }
